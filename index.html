@@ -10040,11 +10040,31 @@ body:has(#activeGameStage:not(.hidden)) { overflow: hidden; }
       }
 
       // ---- Khung người chung (gốc toạ độ = giữa hai bàn chân; nhân vật quay sang phải) ----
-      function jjkLimb(c, pts, w, col) {
-        c.strokeStyle = col; c.lineWidth = w; c.lineCap = "round"; c.lineJoin = "round";
-        c.beginPath(); c.moveTo(pts[0], pts[1]);
-        for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]);
-        c.stroke();
+      // ---- Bộ vẽ nhân vật Chú Thuật Hồi Chiến: cùng một phong cách (viền đậm, tô khối, đổ bóng) cho cả 5 nhân vật ----
+      const JK_OL = "#0d0b16";
+
+      function jjkPoly(c, pts, fill, ow) {
+        c.beginPath(); c.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]);
+        c.closePath(); c.fillStyle = fill; c.fill();
+        c.strokeStyle = JK_OL; c.lineWidth = ow || 2; c.lineJoin = "round"; c.stroke();
+      }
+
+      function jjkLimb(c, pts, w, col, shade) {
+        c.lineCap = "round"; c.lineJoin = "round";
+        const run = (dx, dy) => {
+          c.beginPath(); c.moveTo(pts[0] + dx, pts[1] + dy);
+          for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i] + dx, pts[i + 1] + dy);
+          c.stroke();
+        };
+        c.strokeStyle = JK_OL; c.lineWidth = w + 4.4; run(0, 0);
+        c.strokeStyle = col; c.lineWidth = w; run(0, 0);
+        if (shade) { c.strokeStyle = shade; c.lineWidth = w * 0.4; run(w * 0.2, w * 0.12); }
+      }
+
+      function jjkHand(c, x, y, r, skin) {
+        c.fillStyle = skin; c.strokeStyle = JK_OL; c.lineWidth = 2;
+        c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); c.stroke();
       }
 
       function jjkArmPose(pose, sw) {
@@ -10060,32 +10080,66 @@ body:has(#activeGameStage:not(.hidden)) { overflow: hidden; }
         const a = jjkArmPose(pose, sw);
         const fsx = tw / 2 - 6, bsx = -(tw / 2 - 6);
         const aw = o.armW || 12;
-        jjkLimb(c, [-12, -92, -16, -48, -20, -6], 15, o.pants);
-        jjkLimb(c, [12, -92, 20, -48, 24, -6], 15, o.pants);
-        c.fillStyle = o.shoe;
-        c.beginPath(); c.ellipse(-14, -4, 15, 7, 0, 0, 7); c.fill();
-        c.beginPath(); c.ellipse(30, -4, 15, 7, 0, 0, 7); c.fill();
-        jjkLimb(c, [bsx, -140, a.be[0], a.be[1], a.bh[0], a.bh[1]], aw, o.sleeve);
-        c.fillStyle = o.skin; c.beginPath(); c.arc(a.bh[0], a.bh[1], 6, 0, 7); c.fill();
-        c.fillStyle = o.top;
-        c.beginPath(); c.moveTo(-tw / 2, -148); c.lineTo(tw / 2, -148); c.lineTo(tw * 0.42, -88); c.lineTo(-tw * 0.42, -88); c.closePath(); c.fill();
-        c.fillStyle = o.skin; c.fillRect(-6, -158, 12, 14);
+        // chân và giày
+        jjkLimb(c, [-11, -94, -15, -50, -18, -10], 15, o.pants, o.pantsShade);
+        jjkLimb(c, [11, -94, 19, -50, 24, -10], 15, o.pants, o.pantsShade);
+        c.fillStyle = o.shoe; c.strokeStyle = JK_OL; c.lineWidth = 2;
+        [[-13, -5], [30, -5]].forEach(p => { c.beginPath(); c.ellipse(p[0], p[1], 15, 7, 0, 0, 7); c.fill(); c.stroke(); });
+        // tay sau
+        jjkLimb(c, [bsx, -140, a.be[0], a.be[1], a.bh[0], a.bh[1]], aw, o.sleeve, o.sleeveShade);
+        jjkHand(c, a.bh[0], a.bh[1], 6, o.skin);
+        // cổ và thân
+        jjkPoly(c, [[-6, -164], [6, -164], [7, -146], [-7, -146]], o.skin, 1.8);
+        c.beginPath(); c.moveTo(-tw / 2, -150); c.quadraticCurveTo(0, -156, tw / 2, -150);
+        c.lineTo(tw * 0.42, -88); c.quadraticCurveTo(0, -83, -tw * 0.42, -88); c.closePath();
+        const lg = c.createLinearGradient(-tw / 2, 0, tw / 2, 0);
+        lg.addColorStop(0, o.top); lg.addColorStop(1, o.topShade || o.top);
+        c.fillStyle = lg; c.fill();
+        c.strokeStyle = JK_OL; c.lineWidth = 2.2; c.lineJoin = "round"; c.stroke();
         if (o.deco) o.deco(c, tw, t);
         if (o.extraArms) {
-          jjkLimb(c, [fsx - 2, -122, a.fe[0] - 6, a.fe[1] + 16, a.fh[0] - 10, a.fh[1] + 22], aw - 1, o.sleeve);
-          c.fillStyle = o.skin; c.beginPath(); c.arc(a.fh[0] - 10, a.fh[1] + 22, 5.5, 0, 7); c.fill();
-          jjkLimb(c, [bsx + 2, -122, a.be[0] + 4, a.be[1] + 16, a.bh[0] + 2, a.bh[1] + 22], aw - 1, o.sleeve);
+          jjkLimb(c, [fsx - 2, -122, a.fe[0] - 6, a.fe[1] + 16, a.fh[0] - 10, a.fh[1] + 22], aw - 1, o.sleeve, o.sleeveShade);
+          jjkHand(c, a.fh[0] - 10, a.fh[1] + 22, 5.5, o.skin);
+          jjkLimb(c, [bsx + 2, -122, a.be[0] + 4, a.be[1] + 16, a.bh[0] + 2, a.bh[1] + 22], aw - 1, o.sleeve, o.sleeveShade);
         }
-        jjkLimb(c, [fsx, -140, a.fe[0], a.fe[1], a.fh[0], a.fh[1]], aw, o.sleeve);
-        c.fillStyle = o.skin; c.beginPath(); c.arc(a.fh[0], a.fh[1], 6.5, 0, 7); c.fill();
+        // tay trước
+        jjkLimb(c, [fsx, -140, a.fe[0], a.fe[1], a.fh[0], a.fh[1]], aw, o.sleeve, o.sleeveShade);
+        jjkHand(c, a.fh[0], a.fh[1], 6.5, o.skin);
       }
 
-      // ---- Đầu và trang phục từng nhân vật ----
-      function jjkSpikes(c, pts, fill, stroke) {
-        c.fillStyle = fill; c.strokeStyle = stroke; c.lineWidth = 1.2;
-        c.beginPath();
-        pts.forEach((p, i) => { if (i) c.lineTo(p[0], p[1]); else c.moveTo(p[0], p[1]); });
+      // ---- Phần dùng chung cho đầu: tai, khuôn mặt, mắt ----
+      function jjkFace(c, skin, shade) {
+        const cx = 6, cy = -174;
+        c.fillStyle = skin; c.strokeStyle = JK_OL; c.lineWidth = 2; c.lineJoin = "round";
+        [-19, 19].forEach(dx => { c.beginPath(); c.ellipse(cx + dx, cy + 2, 4, 6, 0, 0, 7); c.fill(); c.stroke(); });
+        c.beginPath(); c.moveTo(cx - 19, cy - 6);
+        c.bezierCurveTo(cx - 20, cy - 25, cx + 20, cy - 25, cx + 19, cy - 6);
+        c.bezierCurveTo(cx + 18, cy + 10, cx + 8, cy + 20, cx, cy + 21);
+        c.bezierCurveTo(cx - 8, cy + 20, cx - 18, cy + 10, cx - 19, cy - 6);
         c.closePath(); c.fill(); c.stroke();
+        if (shade) {
+          c.save(); c.clip(); c.fillStyle = shade; c.globalAlpha = 0.55;
+          c.beginPath(); c.ellipse(cx + 17, cy + 4, 9, 26, 0, 0, 7); c.fill(); c.restore();
+        }
+        c.strokeStyle = "rgba(120,60,40,0.55)"; c.lineWidth = 1.4;
+        c.beginPath(); c.moveTo(cx + 3, cy + 6); c.lineTo(cx + 1.5, cy + 10); c.lineTo(cx + 5, cy + 10.5); c.stroke();
+      }
+
+      function jjkEye(c, x, y, iris, w, h, look) {
+        c.fillStyle = "#ffffff"; c.beginPath(); c.ellipse(x, y, w, h, 0, 0, 7); c.fill();
+        c.fillStyle = iris; c.beginPath(); c.ellipse(x + look, y + 0.6, w * 0.62, h * 0.9, 0, 0, 7); c.fill();
+        c.fillStyle = "#0b0b14"; c.beginPath(); c.ellipse(x + look, y + 0.6, w * 0.3, h * 0.52, 0, 0, 7); c.fill();
+        c.fillStyle = "#ffffff"; c.beginPath(); c.arc(x + look - w * 0.25, y - h * 0.35, Math.max(1, w * 0.17), 0, 7); c.fill();
+        c.strokeStyle = JK_OL; c.lineWidth = 2;
+        c.beginPath(); c.ellipse(x, y, w, h, 0, Math.PI * 1.02, Math.PI * 1.98); c.stroke();
+      }
+
+      function jjkMouth(c, o, w) {
+        c.strokeStyle = "#5b2a2a"; c.lineWidth = 1.8; c.lineCap = "round";
+        c.beginPath();
+        if (o && o.pose === "hit") { c.moveTo(1, -154); c.lineTo(11, -154); }
+        else { c.moveTo(0, -156); c.quadraticCurveTo(6, -152 + (w || 0), 13, -157); }
+        c.stroke();
       }
 
       // Ảnh nhân vật Gojo do Thầy cung cấp (chỉ dùng cho con chơi riêng; không đưa lên kho công khai)
@@ -10114,130 +10168,150 @@ body:has(#activeGameStage:not(.hidden)) { overflow: hidden; }
         } catch (e) {}
       };
 
+      // ---- Đầu và trang phục từng nhân vật ----
       function jjkHeadGojo(c, o) {
-        if (GOJO_BUST.complete && GOJO_BUST.naturalWidth) {
-          // Mặt thật của Gojo (cắt nền từ ảnh Thầy đưa), đặt vào vị trí đầu
-          c.drawImage(GOJO_BUST, -48, -249, 108, 144);
-          return;
-        }
-        jjkSpikes(c, [[-16, -160], [-30, -170], [-20, -176], [-30, -190], [-14, -188], [-14, -204], [0, -192], [8, -208], [16, -192], [30, -200], [28, -184], [40, -186], [26, -170], [26, -158]], "#f8fafc", "#cbd5e1");
-        c.fillStyle = "#fde2cf"; c.beginPath(); c.ellipse(6, -170, 18, 20, 0, 0, 7); c.fill();
-        c.fillStyle = "#f8fafc"; c.strokeStyle = "#cbd5e1"; c.lineWidth = 1;
-        [-10, 0, 10, 19].forEach((k, i) => {
-          c.beginPath(); c.moveTo(k - 4, -191); c.lineTo(k + 9, -191); c.lineTo(k + 3, -172 + (i % 2) * 4); c.closePath(); c.fill(); c.stroke();
-        });
-        if (!o.six) {
-          c.save(); c.translate(6, -166); c.rotate(-0.04);
-          c.fillStyle = "#0b1120"; c.fillRect(-20, -6, 40, 11);
+        jjkPoly(c, [[-15, -158], [-27, -176], [-24, -194], [-13, -191], [-10, -212], [2, -198], [10, -218], [18, -198], [30, -210], [30, -190], [42, -186], [30, -172], [27, -158]], "#f1f5fa", 2);
+        jjkFace(c, "#fbe3d3", "#efc7b2");
+        if (o.six) {
+          c.save(); c.shadowColor = "#38bdf8"; c.shadowBlur = 16;
+          [-2, 14].forEach(ex => jjkEye(c, ex, -173, "#38bdf8", 5.6, 6.6, 1.2));
           c.restore();
         } else {
-          [0, 13].forEach(ex => {
-            c.save(); c.shadowColor = "#38bdf8"; c.shadowBlur = 14;
-            c.fillStyle = "#ffffff"; c.beginPath(); c.ellipse(ex, -167, 5.2, 3.6, 0, 0, 7); c.fill();
-            c.fillStyle = "#38bdf8"; c.beginPath(); c.arc(ex + 1, -167, 2.7, 0, 7); c.fill();
-            c.restore();
-          });
+          jjkPoly(c, [[-15, -183], [26, -183], [27, -165], [-16, -165]], "#15131f", 2);
+          c.strokeStyle = "rgba(255,255,255,0.28)"; c.lineWidth = 1.2;
+          c.beginPath(); c.moveTo(-10, -170); c.lineTo(22, -170); c.stroke();
         }
-        c.strokeStyle = "#a16a5a"; c.lineWidth = 1.6;
-        c.beginPath(); c.moveTo(8, -156); c.quadraticCurveTo(13, -153, 18, -158); c.stroke();
+        jjkMouth(c, o, 1.5);
+        jjkPoly(c, [[-14, -183], [-16, -198], [-2, -209], [16, -209], [28, -198], [26, -183], [23, -176], [19, -186], [13, -175], [8, -186], [2, -174], [-3, -186], [-9, -176]], "#f8fafc", 2);
+        c.strokeStyle = "#c3cfdf"; c.lineWidth = 1.3;
+        c.beginPath(); c.moveTo(-6, -196); c.lineTo(-2, -184); c.moveTo(8, -200); c.lineTo(8, -188); c.moveTo(18, -196); c.lineTo(15, -186); c.stroke();
       }
 
-      function jjkDecoGojo(c) {
-        c.fillStyle = "#1e293b"; c.fillRect(-11, -161, 22, 17);
-        c.fillStyle = "#d4a017";
-        [-132, -118, -104].forEach(y => { c.beginPath(); c.arc(0, y, 2.2, 0, 7); c.fill(); });
+      function jjkDecoGojo(c, tw) {
+        // áo cao cổ của Chú Thuật Cao Chuyên, cúc vàng
+        jjkPoly(c, [[-12, -164], [-4, -164], [-3, -140], [-14, -146]], "#232b55", 2);
+        jjkPoly(c, [[12, -164], [4, -164], [3, -140], [14, -146]], "#232b55", 2);
+        c.strokeStyle = "#0a0d1f"; c.lineWidth = 1.6;
+        c.beginPath(); c.moveTo(0, -148); c.lineTo(0, -88); c.stroke();
+        c.fillStyle = "#e0b43a"; c.strokeStyle = "#7a5a10"; c.lineWidth = 1;
+        [-134, -120, -106].forEach(y => { c.beginPath(); c.arc(3, y, 2.4, 0, 7); c.fill(); c.stroke(); });
+        jjkPoly(c, [[-tw * 0.42, -96], [tw * 0.42, -96], [tw * 0.42, -88], [-tw * 0.42, -88]], "#0e1230", 1.8);
       }
 
-      function jjkHeadSukuna(c) {
-        jjkSpikes(c, [[-16, -160], [-24, -174], [-14, -184], [-10, -198], [2, -188], [12, -200], [20, -186], [30, -184], [26, -168], [24, -158]], "#f472b6", "#be185d");
-        c.fillStyle = "#f4cdb0"; c.beginPath(); c.ellipse(6, -170, 18, 20, 0, 0, 7); c.fill();
-        c.fillStyle = "#f472b6";
-        [-9, 1, 11, 20].forEach((k, i) => { c.beginPath(); c.moveTo(k - 4, -190); c.lineTo(k + 8, -190); c.lineTo(k + 2, -176 + (i % 2) * 3); c.closePath(); c.fill(); });
-        c.fillStyle = "#dc2626";
-        [0, 13].forEach(ex => { c.beginPath(); c.ellipse(ex, -169, 3.6, 2.4, 0, 0, 7); c.fill(); c.beginPath(); c.ellipse(ex, -163, 2.6, 1.6, 0, 0, 7); c.fill(); });
-        c.strokeStyle = "#111827"; c.lineWidth = 1.8;
-        [0, 13].forEach(ex => { c.beginPath(); c.moveTo(ex, -159); c.lineTo(ex - 1, -153); c.stroke(); });
-        c.beginPath(); c.moveTo(-6, -174); c.lineTo(19, -174); c.stroke();
-        c.beginPath(); c.moveTo(4, -151); c.quadraticCurveTo(12, -146, 20, -152); c.stroke();
+      function jjkHeadSukuna(c, o) {
+        jjkPoly(c, [[-14, -160], [-24, -178], [-18, -192], [-12, -206], [0, -197], [10, -212], [18, -198], [30, -202], [28, -184], [36, -172], [26, -160]], "#f08fb4", 2);
+        jjkFace(c, "#f4cdb3", "#e2ad92");
+        c.strokeStyle = "#1a1020"; c.lineWidth = 2; c.lineCap = "round";
+        [-1, 13].forEach(ex => { c.beginPath(); c.moveTo(ex - 5, -181); c.lineTo(ex + 5, -179); c.stroke(); });
+        [-2, 14].forEach(ex => jjkEye(c, ex, -175, "#dc2626", 5, 4.4, 1));
+        [0, 12].forEach(ex => jjkEye(c, ex, -166, "#dc2626", 3.8, 3.2, 1));
+        c.strokeStyle = "#1a1020"; c.lineWidth = 2;
+        [[-12, -170, -8, -168], [-13, -166, -9, -165], [20, -170, 24, -168]].forEach(l => { c.beginPath(); c.moveTo(l[0], l[1]); c.lineTo(l[2], l[3]); c.stroke(); });
+        c.beginPath(); c.moveTo(-3, -188); c.lineTo(15, -188); c.stroke();
+        c.strokeStyle = "#5b2a2a"; c.lineWidth = 1.8;
+        c.beginPath(); c.moveTo(-1, -157); c.quadraticCurveTo(7, -150, 15, -158); c.stroke();
+        jjkPoly(c, [[-14, -180], [-16, -194], [-4, -204], [14, -206], [26, -198], [26, -180], [20, -186], [16, -176], [10, -188], [4, -180], [-2, -190], [-8, -180]], "#f6a6c4", 2);
       }
 
-      function jjkDecoSukuna(c) {
-        c.fillStyle = "#292524";
-        c.beginPath(); c.moveTo(-8, -148); c.lineTo(0, -126); c.lineTo(8, -148); c.closePath(); c.fill();
-        c.strokeStyle = "#111827"; c.lineWidth = 2;
-        [-136, -124, -112].forEach(y => { c.beginPath(); c.moveTo(-18, y); c.lineTo(-8, y + 3); c.moveTo(18, y); c.lineTo(8, y + 3); c.stroke(); });
+      function jjkDecoSukuna(c, tw) {
+        jjkPoly(c, [[-11, -152], [11, -152], [0, -112]], "#f4cdb3", 2);
+        c.strokeStyle = "#1a1020"; c.lineWidth = 1.8; c.lineCap = "round";
+        c.beginPath(); c.moveTo(-6, -142); c.lineTo(-2, -134); c.moveTo(6, -142); c.lineTo(2, -134); c.moveTo(-4, -126); c.lineTo(4, -126); c.stroke();
+        jjkPoly(c, [[-tw * 0.43, -104], [tw * 0.43, -104], [tw * 0.42, -88], [-tw * 0.42, -88]], "#241c34", 2);
+        c.strokeStyle = "#8b5cf6"; c.lineWidth = 1.2;
+        c.beginPath(); c.moveTo(-tw * 0.4, -97); c.lineTo(tw * 0.4, -97); c.stroke();
       }
 
       function jjkHeadJogo(c, o, t) {
-        c.fillStyle = "#7c8b9a"; c.fillRect(-6, -160, 12, 8);
-        c.fillStyle = "#57534e";
-        c.beginPath(); c.moveTo(-18, -152); c.lineTo(-12, -176); c.lineTo(-4, -184); c.lineTo(12, -184); c.lineTo(20, -176); c.lineTo(26, -152); c.closePath(); c.fill();
-        c.fillStyle = "#fb923c";
-        [[-6, -170, 5, 3], [16, -176, 4, 3], [2, -158, 4, 2.6]].forEach(([x, y, rx, ry]) => { c.beginPath(); c.ellipse(x, y, rx, ry, 0.5, 0, 7); c.fill(); });
+        jjkPoly(c, [[-16, -152], [-22, -174], [-14, -190], [-2, -197], [16, -197], [27, -188], [32, -172], [26, -152]], "#8895a3", 2.2);
+        c.fillStyle = "rgba(30,41,59,0.35)"; c.beginPath(); c.ellipse(24, -170, 7, 22, 0, 0, 7); c.fill();
+        // miệng núi lửa
+        c.fillStyle = "#2a1208"; c.strokeStyle = JK_OL; c.lineWidth = 2;
+        c.beginPath(); c.ellipse(8, -197, 17, 6, 0, 0, 7); c.fill(); c.stroke();
+        c.fillStyle = "#f97316"; c.beginPath(); c.ellipse(8, -197, 11, 3.2, 0, 0, 7); c.fill();
         for (let i = 0; i < 5; i++) {
-          const fx = -10 + i * 8, fh = 16 + Math.sin(t * 3 + i * 1.7) * 6 + (i === 2 ? 8 : 0);
-          c.fillStyle = i % 2 ? "#fde047" : "#f97316";
-          c.beginPath(); c.moveTo(fx - 4, -183); c.quadraticCurveTo(fx - 1, -183 - fh * 0.6, fx + 1, -183 - fh); c.quadraticCurveTo(fx + 3, -183 - fh * 0.5, fx + 5, -183); c.closePath(); c.fill();
+          const fx = -4 + i * 6, fh = 18 + Math.sin(t * 3 + i * 1.7) * 6 + (i === 2 ? 9 : 0);
+          c.fillStyle = i % 2 ? "#fde047" : "#f97316"; c.strokeStyle = "#7c2d12"; c.lineWidth = 1.2;
+          c.beginPath(); c.moveTo(fx - 4, -197); c.quadraticCurveTo(fx - 1, -197 - fh * 0.6, fx + 1, -197 - fh); c.quadraticCurveTo(fx + 4, -197 - fh * 0.5, fx + 5, -197); c.closePath(); c.fill(); c.stroke();
         }
-        c.fillStyle = "#ffffff"; c.beginPath(); c.ellipse(10, -166, 6.5, 4.8, 0, 0, 7); c.fill();
-        c.fillStyle = "#111827"; c.beginPath(); c.arc(11.5, -166, 2.6, 0, 7); c.fill();
-        c.strokeStyle = "#1c1917"; c.lineWidth = 1.6;
-        c.beginPath(); c.moveTo(-4, -155); c.lineTo(20, -154); c.stroke();
-        for (let i = 0; i < 5; i++) { c.beginPath(); c.moveTo(-2 + i * 5, -157); c.lineTo(-2 + i * 5, -152); c.stroke(); }
+        // vết nứt dung nham
+        c.strokeStyle = "#fb923c"; c.lineWidth = 1.8; c.lineCap = "round";
+        c.beginPath(); c.moveTo(-8, -192); c.lineTo(-12, -182); c.lineTo(-8, -176); c.moveTo(22, -190); c.lineTo(18, -182); c.lineTo(23, -176); c.stroke();
+        // một mắt lớn
+        c.strokeStyle = JK_OL; c.lineWidth = 2.6;
+        c.beginPath(); c.moveTo(4, -182); c.lineTo(24, -178); c.stroke();
+        jjkEye(c, 14, -172, "#fb923c", 7.5, 6.2, 1.5);
+        c.strokeStyle = JK_OL; c.lineWidth = 2.2;
+        c.beginPath(); c.moveTo(-8, -172); c.lineTo(0, -170); c.stroke();
+        // miệng khâu
+        c.strokeStyle = "#1c1917"; c.lineWidth = 2;
+        c.beginPath(); c.moveTo(-6, -158); c.quadraticCurveTo(8, -152, 22, -158); c.stroke();
+        for (let i = 0; i < 6; i++) { c.beginPath(); c.moveTo(-2 + i * 4.6, -158 + (i % 2) * 1); c.lineTo(-2 + i * 4.6, -153); c.stroke(); }
       }
 
-      function jjkDecoJogo(c) {
-        c.strokeStyle = "#fb923c"; c.lineWidth = 2;
-        c.beginPath(); c.moveTo(-14, -140); c.lineTo(-6, -124); c.lineTo(-12, -106); c.moveTo(12, -142); c.lineTo(4, -122); c.lineTo(14, -102); c.stroke();
+      function jjkDecoJogo(c, tw) {
+        jjkPoly(c, [[-tw / 2, -150], [-8, -152], [-4, -120], [-tw * 0.42, -90]], "#3a2e28", 2);
+        jjkPoly(c, [[tw / 2, -150], [8, -152], [6, -112], [tw * 0.42, -90]], "#3a2e28", 2);
+        c.strokeStyle = "#fb923c"; c.lineWidth = 2; c.lineCap = "round";
+        c.beginPath(); c.moveTo(-6, -140); c.lineTo(0, -126); c.lineTo(-4, -108); c.moveTo(8, -142); c.lineTo(3, -124); c.lineTo(8, -104); c.stroke();
+        jjkPoly(c, [[-tw * 0.43, -100], [tw * 0.43, -100], [tw * 0.42, -88], [-tw * 0.42, -88]], "#1c1917", 1.8);
       }
 
-      function jjkHeadMahito(c) {
-        c.fillStyle = "#5b6b86";
-        c.beginPath(); c.ellipse(-2, -168, 25, 27, 0, 0, 7); c.fill();
-        c.beginPath(); c.moveTo(-22, -166); c.quadraticCurveTo(-30, -150, -20, -136); c.lineTo(-10, -150); c.closePath(); c.fill();
-        c.beginPath(); c.moveTo(18, -166); c.quadraticCurveTo(28, -150, 20, -136); c.lineTo(10, -150); c.closePath(); c.fill();
-        c.fillStyle = "#cfd8e3"; c.beginPath(); c.ellipse(6, -168, 17, 19, 0, 0, 7); c.fill();
-        c.fillStyle = "#5b6b86";
-        [-8, 2, 12].forEach((k, i) => { c.beginPath(); c.moveTo(k - 4, -188); c.lineTo(k + 8, -188); c.lineTo(k + 3, -176 + (i % 2) * 4); c.closePath(); c.fill(); });
-        c.fillStyle = "#0f172a";
-        [0, 13].forEach(ex => { c.beginPath(); c.ellipse(ex, -168, 3.4, 4.2, 0, 0, 7); c.fill(); });
-        c.fillStyle = "#38bdf8";
-        [0, 13].forEach(ex => { c.beginPath(); c.arc(ex + 0.8, -168.6, 1.2, 0, 7); c.fill(); });
-        c.strokeStyle = "#475569"; c.lineWidth = 1.3;
-        c.beginPath(); c.moveTo(-8, -178); c.lineTo(20, -176);
-        [-4, 2, 8, 14].forEach(k => { c.moveTo(k, -179); c.lineTo(k, -174); });
-        c.moveTo(18, -166); c.lineTo(21, -156); c.stroke();
-        c.strokeStyle = "#111827"; c.lineWidth = 1.8;
-        c.beginPath(); c.arc(8, -158, 8, 0.15 * Math.PI, 0.85 * Math.PI); c.stroke();
+      function jjkHeadMahito(c, o) {
+        jjkPoly(c, [[-18, -156], [-27, -176], [-25, -196], [-8, -208], [10, -210], [28, -200], [35, -176], [31, -148], [23, -138], [20, -158]], "#3b4a6b", 2);
+        jjkFace(c, "#cfd9e8", "#a9b9d0");
+        // đường khâu chằng chịt
+        c.strokeStyle = "#475569"; c.lineWidth = 1.4; c.lineCap = "round";
+        c.beginPath(); c.moveTo(-12, -190); c.lineTo(22, -188);
+        [-8, -2, 4, 10, 16].forEach(k => { c.moveTo(k, -192); c.lineTo(k + 1, -186); });
+        c.moveTo(19, -178); c.lineTo(22, -164);
+        [-176, -172, -168].forEach(y => { c.moveTo(18, y); c.lineTo(23, y + 1); });
+        c.stroke();
+        [-1, 13].forEach(ex => jjkEye(c, ex, -173, "#3b3f66", 4.8, 5.6, 0.8));
+        c.strokeStyle = "#1a1020"; c.lineWidth = 2.2;
+        c.beginPath(); c.moveTo(-1, -160); c.quadraticCurveTo(7, -150, 15, -160); c.stroke();
+        c.strokeStyle = "#fff"; c.lineWidth = 1.4;
+        c.beginPath(); c.moveTo(2, -158); c.lineTo(12, -158); c.stroke();
+        jjkPoly(c, [[-15, -178], [-14, -196], [-2, -207], [16, -207], [26, -196], [25, -178], [20, -184], [16, -172], [11, -186], [6, -176], [1, -188], [-6, -176], [-10, -186]], "#46577c", 2);
       }
 
-      function jjkDecoMahito(c) {
-        c.fillStyle = "#65a30d"; c.fillRect(-22, -140, 14, 14);
-        c.fillStyle = "#7c3aed"; c.fillRect(6, -120, 16, 14);
-        c.strokeStyle = "#e2e8f0"; c.lineWidth = 1.2;
-        c.beginPath(); c.moveTo(-22, -126); c.lineTo(-8, -126); c.moveTo(6, -106); c.lineTo(22, -106);
-        c.moveTo(0, -148); c.lineTo(0, -90); c.stroke();
+      function jjkDecoMahito(c, tw) {
+        c.strokeStyle = "#475569"; c.lineWidth = 1.5; c.lineCap = "round";
+        c.beginPath(); c.moveTo(0, -150); c.lineTo(0, -92);
+        [-140, -130, -120, -110, -100].forEach(y => { c.moveTo(-4, y); c.lineTo(4, y + 1); });
+        c.moveTo(-18, -134); c.lineTo(-6, -126);
+        c.moveTo(8, -118); c.lineTo(20, -112);
+        c.stroke();
+        jjkPoly(c, [[-tw * 0.43, -102], [tw * 0.43, -102], [tw * 0.42, -88], [-tw * 0.42, -88]], "#52702d", 1.8);
       }
 
       function jjkHeadToji(c) {
-        c.fillStyle = "#e8c4a0"; c.beginPath(); c.ellipse(6, -170, 18, 20, 0, 0, 7); c.fill();
-        jjkSpikes(c, [[-12, -176], [-14, -190], [-4, -198], [8, -196], [20, -198], [26, -188], [24, -176], [18, -184], [8, -180], [-2, -184]], "#111827", "#020617");
-        c.strokeStyle = "#1c1917"; c.lineWidth = 2.2;
-        [0, 13].forEach(ex => { c.beginPath(); c.moveTo(ex - 4, -171); c.lineTo(ex + 4, -169); c.stroke(); });
-        c.fillStyle = "#0f172a";
-        [0, 13].forEach(ex => { c.beginPath(); c.ellipse(ex + 0.6, -167.5, 2.6, 1.7, 0, 0, 7); c.fill(); });
-        c.strokeStyle = "#a16a5a"; c.lineWidth = 1.6;
-        c.beginPath(); c.moveTo(8, -154); c.lineTo(18, -154); c.stroke();
-        c.strokeStyle = "#b45309"; c.lineWidth = 1.8;
-        c.beginPath(); c.moveTo(18, -157); c.lineTo(19, -150); c.stroke();
+        jjkFace(c, "#e6bf9b", "#c99a74");
+        c.strokeStyle = JK_OL; c.lineWidth = 2.6; c.lineCap = "round";
+        [-2, 14].forEach(ex => { c.beginPath(); c.moveTo(ex - 6, -181); c.lineTo(ex + 5, -178); c.stroke(); });
+        [-2, 14].forEach(ex => jjkEye(c, ex, -173, "#2f6b4f", 5, 3.6, 1.2));
+        c.strokeStyle = "#5b2a2a"; c.lineWidth = 1.9;
+        c.beginPath(); c.moveTo(0, -156); c.lineTo(14, -156); c.stroke();
+        c.strokeStyle = "#b45a4a"; c.lineWidth = 2;
+        c.beginPath(); c.moveTo(14, -157); c.lineTo(18, -153); c.moveTo(12, -156); c.lineTo(15, -150); c.stroke();
+        jjkPoly(c, [[-16, -176], [-20, -192], [-10, -204], [4, -208], [18, -206], [30, -196], [28, -176], [24, -188], [16, -180], [10, -190], [2, -182], [-4, -192], [-10, -182]], "#17171f", 2);
+        c.strokeStyle = "#3b3b4d"; c.lineWidth = 1.2;
+        c.beginPath(); c.moveTo(-8, -196); c.lineTo(-2, -186); c.moveTo(12, -200); c.lineTo(10, -190); c.stroke();
+      }
+
+      function jjkDecoToji(c, tw) {
+        jjkPoly(c, [[-10, -164], [10, -164], [9, -146], [-9, -146]], "#16161d", 2);
+        c.strokeStyle = "#2c2c3a"; c.lineWidth = 1.6; c.lineCap = "round";
+        c.beginPath(); c.moveTo(0, -146); c.lineTo(0, -108); c.moveTo(-14, -136); c.quadraticCurveTo(-6, -128, 0, -134); c.moveTo(14, -136); c.quadraticCurveTo(6, -128, 0, -134); c.stroke();
+        jjkPoly(c, [[-tw * 0.43, -98], [tw * 0.43, -98], [tw * 0.42, -88], [-tw * 0.42, -88]], "#2b2f23", 1.8);
       }
 
       const JJK_LOOKS = {
-        gojo: { skin: "#fde2cf", top: "#111827", sleeve: "#111827", pants: "#0f172a", shoe: "#020617", torsoW: 46, head: jjkHeadGojo, deco: jjkDecoGojo },
-        sukuna: { skin: "#f1c9a8", top: "#e7e5e4", sleeve: "#f1c9a8", pants: "#1c1917", shoe: "#292524", torsoW: 50, extraArms: true, head: jjkHeadSukuna, deco: jjkDecoSukuna },
-        jogo: { skin: "#7c8b9a", top: "#57534e", sleeve: "#7c8b9a", pants: "#44403c", shoe: "#1c1917", torsoW: 52, head: jjkHeadJogo, deco: jjkDecoJogo },
-        mahito: { skin: "#cfd8e3", top: "#3f3f46", sleeve: "#cfd8e3", pants: "#365314", shoe: "#1c1917", torsoW: 46, head: jjkHeadMahito, deco: jjkDecoMahito },
-        toji: { skin: "#e8c4a0", top: "#18181b", sleeve: "#e8c4a0", pants: "#1f2937", shoe: "#111827", torsoW: 52, armW: 14, head: jjkHeadToji }
+        gojo: { skin: "#fbe3d3", top: "#232b55", topShade: "#161b3a", sleeve: "#232b55", sleeveShade: "#141a38", pants: "#161b3a", pantsShade: "#0d1128", shoe: "#0c0c16", torsoW: 44, head: jjkHeadGojo, deco: jjkDecoGojo },
+        sukuna: { skin: "#f4cdb3", top: "#f1ece2", topShade: "#cfc6b4", sleeve: "#f4cdb3", sleeveShade: "#dca98c", pants: "#2b2a30", pantsShade: "#1a1a20", shoe: "#1c1a22", torsoW: 50, extraArms: true, head: jjkHeadSukuna, deco: jjkDecoSukuna },
+        jogo: { skin: "#8895a3", top: "#4a4039", topShade: "#2f2823", sleeve: "#8895a3", sleeveShade: "#667383", pants: "#3f3a36", pantsShade: "#27231f", shoe: "#1c1917", torsoW: 52, head: jjkHeadJogo, deco: jjkDecoJogo },
+        mahito: { skin: "#cfd9e8", top: "#cfd9e8", topShade: "#a9b9d0", sleeve: "#cfd9e8", sleeveShade: "#a9b9d0", pants: "#52702d", pantsShade: "#3a5120", shoe: "#1c1917", torsoW: 46, head: jjkHeadMahito, deco: jjkDecoMahito },
+        toji: { skin: "#e6bf9b", top: "#1b1b24", topShade: "#101016", sleeve: "#1b1b24", sleeveShade: "#101016", pants: "#2b2f23", pantsShade: "#1b1e16", shoe: "#101016", torsoW: 54, armW: 14, head: jjkHeadToji, deco: jjkDecoToji }
       };
 
       function drawJjkFighter(ctx, kind, x, groundY, t, o) {
@@ -10254,7 +10328,9 @@ body:has(#activeGameStage:not(.hidden)) { overflow: hidden; }
         ctx.scale(o.facing, 1);
         if (o.glow) { ctx.shadowColor = o.glow; ctx.shadowBlur = 14; }
         jjkHumanoid(ctx, look, o.pose, t);
+        ctx.save(); ctx.translate(4, -150); ctx.scale(1.28, 1.28); ctx.translate(-4, 150);
         look.head(ctx, o, t);
+        ctx.restore();
         ctx.restore();
       }
 
